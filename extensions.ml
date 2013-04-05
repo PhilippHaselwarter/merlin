@@ -20,6 +20,7 @@ let ext_js = "js",
   ["module Js : sig
     val un_js : 'a Js.t -> 'a
     val un_meth : 'a Js.meth -> 'a
+    val un_constr : 'a Js.constr -> 'a
   end"],
   []
 
@@ -28,5 +29,5 @@ let ext_js = "js",
    a##m (a,b,c) | un_meth ((un_js a)#m a b c …)
    Js constructors : todo *)
 
-let registry = [ext_lwt;ext_any]
+let registry = [ext_lwt;ext_js;ext_any]
 

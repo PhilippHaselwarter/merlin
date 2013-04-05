@@ -125,6 +125,12 @@ module Lwt = struct
   let raise_lwt' = prim_ident "Lwt.raise_lwt'"
 end
 
+module Js = struct
+  let un_js     = prim "Js.un_js"
+  let un_meth   = prim "Js.un_meth"
+  let un_constr = prim "Js.un_constr"
+end
+
 (* tools used in the next few modules *)
 let format_params ~f =
   List.map (function None -> f "_" | Some id -> f id.Location.txt)
