@@ -97,8 +97,8 @@ struct
     let rec aux summary =
       match summary with
       | Env.Env_empty -> ()
-      (* Stop when encoutering extensions *)
-      | Env.Env_module (_,i,_) when i = Extensions.ident -> ()
+      (* Stop when encountering extensions *)
+      | Env.Env_module (_,i,_) when i = Extensions_utils.ident -> ()
       | Env.Env_value (s,i,v) ->
           append (Sig_value (i,v));
           aux s
