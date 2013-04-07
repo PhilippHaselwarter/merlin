@@ -1,3 +1,5 @@
+type token = Chunk_parser.token
+
 let token_to_string =
   let open Chunk_parser in function
     | AMPERAMPER -> "AMPERAMPER"
