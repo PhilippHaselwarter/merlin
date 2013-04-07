@@ -50,8 +50,8 @@ let env_at state pos_cursor =
   in
   let outlines' = History.move 2 (Outline.seek_before pos_cursor state.outlines) in
   try
-    let pos_browsed, env = match Browse.browse_near pos_cursor structures with
-      | Some ({ Location.loc_end },env,_) -> loc_end, env
+    let pos_browsed, env, t = match Browse.browse_near pos_cursor structures with
+      | Some ({ Location.loc_end },env,t) -> loc_end, env, t
       | None -> raise Not_found
     in
     let open Lexing in
@@ -59,11 +59,11 @@ let env_at state pos_cursor =
       | Some pos_next when
          Misc.(compare_pos pos_next pos_browsed > 0 && compare_pos pos_cursor pos_next > 0) ->
            raise Not_found
-      | _ -> env
+      | _ -> env, Some t
   with Not_found ->
     let _, chunks = History.Sync.rewind fst outlines' state.chunks in
     let _, types = History.Sync.rewind fst chunks state.types in
-    Typer.env types
+    Typer.env types, None
 
 (* Gather all exceptions in state (warnings, syntax, env, typer, ...) *)
 let exceptions_in state =
@@ -184,7 +184,7 @@ let command_type = {
       state, `String (to_string ())
 
   | [`String "expression"; `String expr; `String "at" ; jpos] ->
-    let env = env_at state (Protocol.pos_of_json jpos) in
+    let env, _ = env_at state (Protocol.pos_of_json jpos) in
     let ppf, to_string = Misc.ppf_to_string () in
     type_in_env env ppf expr;
     state, `String (to_string ())
@@ -207,6 +207,7 @@ let command_type = {
       | Browse.Envs.Module m -> Printtyp.modtype ppf m
       | Browse.Envs.Modtype m -> Printtyp.modtype_declaration (Ident.create "_") ppf m
       | Browse.Envs.Class (ident, cd) -> Printtyp.class_declaration ident ppf cd
+      | Browse.Envs.Method _ -> Format.pp_print_string ppf "FIXME: METHOD call"
       | Browse.Envs.ClassType (ident, ctd) ->
         Printtyp.cltype_declaration ident ppf ctd
     end;
@@ -382,6 +383,19 @@ let complete_in_env env prefix =
       | _ -> find prefix []
   with Not_found -> []
 
+let complete_in_env ?kind env prefix =
+  match kind with
+  | Some (Browse.Envs.Method (t,_)) ->
+    let methods = UTop_complete.methods_of_type env [] t in
+    List.map (fun (name,ty) ->
+      let ppf, to_string = Misc.ppf_to_string () in
+      Printtyp.type_sch ppf ty;
+      `Assoc ["name", `String name ; "kind", `String "#" ;
+              "desc", `String (to_string ()) ;
+              "info", `String ""])
+      methods
+  | _ -> complete_in_env env prefix
+
 let command_complete = {
   name = "complete";
 
@@ -394,8 +408,8 @@ let command_complete = {
       state, `List (List.rev compl)
     end
   | [`String "prefix" ; `String prefix ; `String "at" ; jpos ] ->
-    let env = env_at state (Protocol.pos_of_json jpos) in
-    let compl = complete_in_env env prefix in
+    let env, kind = env_at state (Protocol.pos_of_json jpos) in
+    let compl = complete_in_env env ?kind prefix in
     state, `List (List.rev compl)
 
   | _ -> invalid_arguments ()
@@ -586,7 +600,7 @@ let command_dump = {
       in
       state, `List (List.map aux sg)
   | [`String "env" ; `String "at" ; jpos ] ->
-    let env = env_at state (Protocol.pos_of_json jpos) in
+    let env, _ = env_at state (Protocol.pos_of_json jpos) in
     let sg = Browse.Envs.signature_of_env env in
     let aux item =
       let ppf, to_string = Misc.ppf_to_string () in

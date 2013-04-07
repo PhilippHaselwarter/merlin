@@ -135,6 +135,7 @@ struct
     | Modtype of Types.modtype_declaration
     | Class of Ident.t * Types.class_declaration
     | ClassType of Ident.t * Types.class_type_declaration
+    | Method of Types.type_expr * string
     | Other
 
   type t = T of Location.t * Env.t * kind * t list Lazy.t
@@ -237,16 +238,21 @@ struct
     | Texp_record (pldes,Some e) -> expression e :: List.map (fun (_,_,_,e) -> expression e) pldes
     | Texp_record (pldes,None) -> List.map (fun (_,_,_,e) -> expression e) pldes
     | Texp_array es -> List.map expression es
+    | Texp_send (ea, m, eb') ->
+      let tail = match eb' with None -> [] | Some eb -> [expression eb] in
+      let m = meth ea m ea.exp_loc.Location.loc_end
+         (match eb' with None -> { Lexing. dummy_pos with Lexing.pos_lnum = max_int}
+                       | Some eb -> eb.exp_loc.Location.loc_start )
+      in
+      expression ea :: m :: tail
     | Texp_assert ea
     | Texp_lazy ea
     | Texp_setinstvar (_,_,_,ea)
-    | Texp_send (ea, _, None)
     | Texp_field (ea,_,_,_) -> [expression ea]
     | Texp_ifthenelse (ea,eb,None)
     | Texp_setfield (ea,_,_,_,eb)
     | Texp_sequence (ea,eb)
     | Texp_when (ea,eb)
-    | Texp_send (ea, _, Some eb)
     | Texp_while (ea,eb) -> [expression ea ; expression eb]
     | Texp_for (_,_,ea,eb,_,ec)
     | Texp_ifthenelse (ea,eb,Some ec) -> List.map expression [ea;eb;ec]
@@ -268,25 +274,35 @@ struct
     | Tmod_functor (_,_,_,e) -> [module_expr e]
     | Tmod_apply (e1,e2,_) -> [module_expr e1 ; module_expr e2]
     | Tmod_unpack (e,_) -> [expression e]
+
+  and meth obj name loc_start loc_end =
+    let name = match name with
+      | Typedtree.Tmeth_name s -> s
+      | Typedtree.Tmeth_val i -> Ident.name i
+    in
+    T ({ Location. loc_start ; loc_end ; loc_ghost = false }, obj.exp_env,
+       Method (obj.exp_type,name), lazy [])
+    
+
 end
 
 let browse_local_near pos nodes =
   let cmp = Location.compare_pos pos in
   let best_of (Envs.T (l,_,_,_) as t) (Envs.T (l',_,_,_) as t') =
     match cmp l', cmp l with
-    | 0, 0 ->
+    (*| 0, 0 ->
       (* Cursor is inside locations: select smaller one *)
       if Misc.compare_pos l.Location.loc_end l'.Location.loc_end < 0
-      then t'
-      else t
+      then t
+      else t'*)
       (* Cursor inside one location, prefer it *)
-    | 0, _ -> t'
-    | _, 0 -> t
+    (*| 0, _ -> t
+    | _, 0 -> t' *)
     | _, _ ->
       (* Cursor outside locations, select the rightmost one *)
       if Misc.compare_pos l.Location.loc_end l'.Location.loc_end < 0
-      then t
-      else t'
+      then t'
+      else t
   in
   List.fold_left
   begin fun best (Envs.T (loc,_,_,_) as t) ->
@@ -330,6 +346,7 @@ let rec dump_envs envs =
       | Envs.Modtype _ -> "modtype"
       | Envs.Class (_, _) -> "class"
       | Envs.ClassType _ -> "class_type"
+      | Envs.Method _ -> "method"
       | Envs.Other -> "??"
     in
     Protocol.with_location l
