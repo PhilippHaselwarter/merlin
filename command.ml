@@ -394,7 +394,7 @@ let complete_in_env ?kind env prefix =
     in
     List.map (fun (name,ty) ->
       let ppf, to_string = Misc.ppf_to_string () in
-      Printtyp.type_sch ppf ty;
+      Printtyp.type_scheme ppf ty;
       `Assoc ["name", `String name ; "kind", `String "#" ;
               "desc", `String (to_string ()) ;
               "info", `String ""])
