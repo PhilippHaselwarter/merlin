@@ -388,6 +388,10 @@ let complete_in_env ?kind env prefix =
   match kind with
   | Some (Browse.Envs.Method (t,_)) ->
     let methods = UTop_complete.methods_of_type env [] t in
+    let methods = List.filter
+        (fun (name,_) -> Misc.has_prefix prefix name)
+        methods
+    in
     List.map (fun (name,ty) ->
       let ppf, to_string = Misc.ppf_to_string () in
       Printtyp.type_sch ppf ty;
