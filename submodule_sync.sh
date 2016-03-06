@@ -1,5 +1,5 @@
 #!/bin/sh
-SUBMODULES="vim/vimbufsync"
+SUBMODULES=""
 
 git submodule update
 for i in $SUBMODULES; do

@@ -112,9 +112,6 @@ install-share: $(TARGET_EMACS)
 
 install-vim:
 	install -d $(VIM_DIR)
-	if [ -n "$(WITH_VIMBUFSYNC)" ]; then \
-		cp -R vim/vimbufsync/* $(VIM_DIR)/; \
-	fi
 	cp -R vim/merlin/* $(VIM_DIR)
 
 message:
@@ -123,7 +120,7 @@ message:
 	@echo "-------------------"
 	@echo "Add $(VIM_DIR) to your runtime path, e.g.:"
 	@echo "  :set rtp+=$(VIM_DIR)"
-	@echo 
+	@echo
 	@echo "Quick setup for EMACS"
 	@echo "-------------------"
 	@echo "Add $(SHARE_DIR)/emacs/site-lisp to your runtime path, e.g.:"
